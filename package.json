@@ -1,0 +1,27 @@
+{
+  "name": "API-Exec",
+  "version": "0.0.1",
+  "description": "An API Interface",
+  "main": "main.js",
+  "icon"    : "icon.icns",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": "https://github.com/cpanelsky/",
+  "keywords": [
+    "Electron",
+    "API",
+    "cPanel",
+    "WHM"
+  ],
+  "author": "Sky",
+  "license": "cpeeps",
+  "devDependencies": {
+    "electron": "~1.6.2"
+  },
+  "dependencies": {
+    "jquery": "^3.2.1",
+    "password-hash-and-salt": "^0.1.4",
+    "prettyjson": "^1.2.1"
+  }
+}

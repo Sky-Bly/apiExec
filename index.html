@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>API Exec</title>
+
+    <link rel="stylesheet" href="./styles.css"  type="text/css"/>
+
+  <style media="screen">
+   body {
+   height:95%;
+   backgroundColor: red;
+   -webkit-user-select: none;
+   -webkit-app-region: drag;
+   }
+  </style>
+
+  <script src="https://code.jquery.com/jquery-1.9.1.min.js"></script>
+
+</head>
+  <body>
+    <div style="width:800px;height:690px;">
+    <div id="mainview" style="height:70%;width:90%;">
+    <webview id="view" style="left:1px;width:750px;height:500px;top:5px;font-color:green;" src="_about_blank/"></webview>
+    <textarea readonly id="jsonContent" style="visibility:hidden;" class="jsonContent"></textarea>
+    <input type='text' title="API Input" id='inputCommand' style="width:75%;height:30px;bottom:10px;right:50%;left:10px;z-index:10;position:fixed;background-color:#afaaaa;font-size:13px;" placeholder="QUERY" />
+
+    <button onclick="handleExecRequest()" style="position:fixed;right:135px;bottom:13px;z-index:11">RUN</button>
+    <button onclick="serverSelection();serverList()" style="position:fixed;right:40px;bottom:25px;height:20px;z-index:11">HOSTS</button>
+    <font color="#EA7638"><div class="requestForm" id="requestForm" style="position:fixed;height:100px;bottom:50px;z-index:4;left:-1px;right:-1px;"></div></font></div>
+
+   <div id="servers" class="serverlogin" style="visibility:hidden" >
+     <input title="Username" placeholder="USER" type='text' id='inp_i' style="padding:3px;margin:2px;width:38%;height:25px;left:5px;z-index:10;background-color:#afaaaa;top:5px;font-family: cfont;"/>
+     <input title="Password" placeholder='PASS'  type='password' id='inp_a' style="padding:3px;margin:2px;width:46%;height:25px;left:50%;z-index:10;background-color:#afaaaa;top:5px;font-family: cfont;font-color:black;" />
+     <input title="Server" placeholder="HOST"  type='text' id='inp_u' style="padding:3px;margin:2px;width:93%;height:25px;left:5px;z-index:10;background-color:#afaaaa;bottom:5px;font-family: cfont;"/>
+     <input title="serverID" placeholder="SaveID(required to save)"  type='text' id='serverID' style="padding:3px;margin:2px;width:93%;height:25px;left:5px;z-index:10;background-color:#afaaaa;bottom:5px;font-family: cfont;"/>
+
+     <label title="Auth : AccessHash/Token or Password" class="switch">
+       <input type="checkbox" title="Auth : AccessHash/Token or Password" id="execTypeSwitchT">
+       <div class="slider round" id="execTypeSwitch"><font color=white size=1.5 style="position:relative;z-index:55;">Auth ⚙</font></div>
+     </label>
+
+     <label title="cPanel UAPI requires Password Auth Option" class="switch" >
+       <input type="checkbox" title="cPanel UAPI requires Password Auth Option" id="acctTypeSwitchT" disabled=true>
+       <div class="slider round" id="acctTypeSwitch" style='opacity:.55'><font color=white size=1.5 style="position:relative;z-index:55;">WHM/cP</font></div>
+     </label>
+
+     <button onclick="login()" id="loginBtn" style="position:fixed;right:55px;bottom:60px;height:21px;z-index:11">LOGIN</button>
+     <button onclick="saveID()" class="saveButton" style="position:fixed;right:20px;bottom:60px;width:23px;height:21px;z-index:11" title="Save Server ID">&#128190;</button>
+   </div>
+  </div>
+</div>
+<div class="footer" style="height:150px;left:0px;position:fixed;width:105%;bottom:0px;z-index:3;"><div>
+    <div class="authSuccess" align=center id="authSuccess" style="font-family:cfont;font-size:25px;visibility:hidden;height:150px;left:30%;border-radius:10px;opacity:.9;position:fixed;width:40%;bottom:25%;z-index:25;"><br><br><font size=6><b><p style="z-index:20;">Auth Success</p><img style="height:100%;width:100%;position:fixed;left:0px;top:0px;opacity:.3;z-index:-1;bottom:45%;" src="./success.jpg"></img><b></font></div>
+    <div class="authFail" align=center  id="authFail"  style="font-family:cfont;font-size:25px;visibility:hidden;height:150px;left:30%;border-radius:10px;opacity:.9;position:fixed;width:40%;z-index:25;bottom:25%;"><br><br><font size=6><b>Auth Failure<b></font><img style="height:100%;width:100%;position:fixed;left:0px;top:0px;opacity:.3;z-index:-1;bottom:45%;" src="./failure.jpg"></img></div>
+    <div align=center  id="bounceload"  style="font-family:cfont;font-size:25px;visibility:hidden;height:150px;left:30%;border-radius:10px;opacity:.9;position:fixed;width:40%;z-index:25;bottom:55%;"><img src="./Loading.jpg"></img<br><br><font size=6><b>Loading<b></font</div>
+
+      <div id="notifyExec" class="notifyExec"></div>
+
+
+
+<div id="serverList" class="serverList" style="visibility:hidden" ><br></div>
+
+  </body>
+
+<script>
+//
+//
+// An initializer constant set for our various things..
+//
+//
+//
+const store = require('crypto'),
+    a = 'aes-256-ctr',
+    ain = 'n=(((6^2)*3)(0.029088820866574))';
+const fs = require('fs')
+
+const {dialogs} = require('electron')
+
+// Toggle switch handles
+var execViaAPI = true
+$('#execTypeSwitchT').change(function () {
+    toggleExecMethod()
+});
+
+
+
+// When everything is ready, trigger the events without problems
+
+function toggleExecMethod(){
+  if (execViaAPI == true ){
+      execViaAPI = false
+      console.log("got here")
+      document.getElementById('acctTypeSwitchT').disabled = false
+      document.getElementById('acctTypeSwitch').style.opacity = ".95"
+      document.getElementById('loginBtn').disabled = false
+
+      sendNotification("Set auth to password")
+  } else {
+      execViaAPI = true;
+      sendNotification("Set auth to API")
+      document.getElementById('acctTypeSwitchT').disabled = "true"
+      document.getElementById('acctTypeSwitch').style.opacity = ".55"
+      document.getElementById('loginBtn').disabled = true
+
+  }
+}
+
+var execViaWHM = true
+$('#acctTypeSwitchT').change(function () {
+    toggleLoginBase()
+});
+
+
+function toggleLoginBase(){
+  if (execViaWHM == false ){
+      execViaWHM = true
+      sendNotification("Set to use WHM")
+  } else {
+      execViaWHM = false
+      execViaAPI = false
+      sendNotification("Set to use cPanel")
+  }
+}
+
+
+function sendNotification(e){
+  var notifyExec = document.getElementById('notifyExec')
+  notifyExec.innerText = e
+  notifyExec.style.visibility = "visible"
+
+  setTimeout(function() {
+    notifyExec.style.visibility = "hidden"
+  }, 10000);
+
+}
+
+function handleExecRequest(){
+  if (execViaAPI == true){
+    console.log("apifetched")
+    apiFetch()
+
+  }else {
+    console.log("sessioned")
+    sessionCommand()
+
+  }
+}
+
+//
+//
+// This where things get puts() to be got from the gets()
+// It is intentionally terse
+//
+//
+
+function puts(text, context, id){
+  var ci = store.createCipher(a,ain)
+  var cry = ci.update(text,'utf8','hex')
+  cry += ci.final('hex');
+  var path = require('path');
+  require('fs').writeFileSync('cpdcontent/' + id + '_' + context + '.dat', cry, {encoding:'hex'});
+  return cry;
+}
+
+//
+//
+// It gets it out here..
+//
+//
+//
+
+function gets(file){
+  var content = fs.readFileSync('cpdcontent/' + file, {encoding:'hex'})
+  var out = store.createDecipher(a,ain)
+  var dec = out.update(content,'hex','utf8')
+  dec += out.final('utf8');
+  return dec;
+}
+
+
+
+//
+//
+// This is from the save button, initiates the puts function
+//
+//
+//
+
+function saveID(){
+
+
+   var entryID = document.getElementById('serverID').value
+  if (typeof(entryID)  !== "undefined" && entryID) {
+  } else {
+  var err = "no entry"
+    //  console.log("no entry")
+    return err
+  }
+
+  //
+  // validate alphanum on the ID
+  //
+
+    var pwd = entryID
+    var Exp = /^[0-9a-zA-Z-]+$/i
+
+    if(!pwd.match(Exp)) {
+        alert("\n\n" +
+              " Use Alpha-Numeric ID's [0-9a-zA-Z-] ")
+        return "AlphaNumericFailed"
+    }
+
+
+    if (  execViaWHM == false  ) {
+      var targetBase = "cpanel"
+      var execType   = "pass"
+    } else {
+     if ( execViaAPI == true ) {
+      var execType   = "api"
+      var targetBase = "whm"
+    } else {
+      var execType   = "pass"
+      var targetBase = "whm"
+     }
+    }
+
+  var combinedSet = targetBase + "_" + execType
+
+  puts(combinedSet, "d", entryID)
+
+  var esIn = document.getElementById('inp_a').value
+  console.log(esIn)
+  if (esIn === 'null' ) {
+    return
+  }
+  if ( esIn === "undef"){
+    return
+  }
+  puts(esIn, "a", entryID)
+
+  //
+  // Get the hostname to save
+  //
+
+  var hostname = document.getElementById('inp_u').value
+  if (hostname === 'null' ) {
+    //  console.log('hostname:null')
+    return
+  }
+  if ( hostname === 'undef') {
+    return
+  }
+  puts(hostname, 'u', entryID)
+
+  //
+  // Username to save
+  //
+
+  var usernames = document.getElementById('inp_i').value
+  if (usernames === 'null') {
+    //  console.log('username:null')
+    return
+  }
+  if (usernames === 'undef') {
+    //  console.log('username:undef')
+    return
+  }
+  puts(usernames, 'i', entryID)
+
+  //
+  // Then add the element into the list of servers to select from
+  //
+
+  addSavedButton()
+}
+
+//
+//  ^
+//
+
+function addSavedButton(){
+  var entryID = document.getElementById('serverID').value
+  var editElem =  document.getElementById('serverList')
+  var elementExists = document.getElementById(entryID);
+  if (elementExists){
+    return "element Exists"
+  } else {
+  current = editElem.innerHTML
+  editElem.innerHTML = current + "<div id=\"div_" + entryID + "\" style=\"position:inline;\"><button  id=\"" + entryID + "\"  onclick=\"checkUserFiles(this.id)\" class=\"serverItem\">" + entryID + "</button>&nbsp;<a title='Remove'  id=\"" + entryID + "\" onClick=\"buildAndRemoveList(this.id)\" ><font size=4 color=red>⊗</font></a></div>"
+  }
+}
+
+//
+// This runs on startup, gets a list of the ID's to populate in our list
+//
+
+function getUserFiles(){
+  var foundIds = []
+  var editElem =  document.getElementById('serverList')
+  var current
+  const fs = require('fs')
+  fs.readdir('./cpdcontent/', (err, dir) => {
+        var capturedID
+          for (var i = 0, path; path = dir[i]; i++) {
+            if (path.indexOf(".dat") >= 1 ){
+            capturedID = path.split("_")[0]
+            if (typeof(capturedID)  !== "undefined" && capturedID){
+            if (foundIds.indexOf(capturedID) === -1 )  {
+            current = editElem.innerHTML
+            editElem.innerHTML = current + "<div id=\"div_" + capturedID + "\" style=\"position:inline;\"><button  id=\"" + capturedID + "\"  onclick=\"checkUserFiles(this.id)\" class=\"serverItem\">" + capturedID + "</button>&nbsp;<a title='Remove' id=\"" + capturedID + "\" onClick=\"buildAndRemoveList(this.id)\" ><font size=4 color=red>⊗</font></a></div>"
+            foundIds.push(capturedID)
+            }
+          }
+        }
+      }
+  });
+  //
+  // We show the server list and input elements when it starts
+  //
+  serverList()
+  serverSelection()
+}
+
+//
+// Click Toggles for server entries
+//
+
+function serverSelection(){
+  var xe = document.getElementById('servers');
+  if (xe.style.visibility === 'hidden') {
+      xe.style.visibility = 'visible';
+  } else {
+      xe.style.visibility = 'hidden';
+  }
+}
+
+function serverList(){
+  var xe = document.getElementById('serverList');
+  if (xe.style.visibility === 'hidden') {
+      xe.style.visibility = 'visible';
+  } else {
+      xe.style.visibility = 'hidden';
+  }
+}
+
+
+//
+// This is for populating our server entries
+//
+
+function checkUserFiles(e){
+  var ourServerToFind = e
+  var foundIds = []
+  var current
+  var serverInputID = document.getElementById("serverID")
+  serverInputID.value = e
+  const fs = require('fs')
+  fs.readdir('./cpdcontent/', (err, dir) => {
+        var capturedID
+          for (var i = 0, path; path = dir[i]; i++) {
+            if (path.indexOf(".dat") >= 1 ){
+            capturedID = path.split("_")[0]
+            capturedContext = path.split("_")[1]
+            capturedContext = capturedContext.split(".")[0]
+            if (typeof(capturedID)  !== "undefined" && capturedID) {
+              if (ourServerToFind.toString() == capturedID.toString() ) {
+                var data = gets(path)
+                var targets = "inp_" + capturedContext
+                if (capturedContext !== "d" ) {
+                var ourElement = document.getElementById(targets)
+                ourElement.value = data
+                } else {
+                 setAuthByID(data)
+
+               }
+              }
+            }
+          }
+        }
+  });
+}
+
+//
+// This is for removing our server entries
+//
+
+function buildAndRemoveList(serverID){
+  var dirUf = './cpdcontent/'
+  var pathedServerID = dirUf + serverID
+  clearUserFiles(pathedServerID + "_a.dat", serverID + "_a.dat" )
+  clearUserFiles(pathedServerID + "_i.dat", serverID + "_i.dat" )
+  clearUserFiles(pathedServerID + "_u.dat", serverID + "_u.dat" )
+  clearUserFiles(pathedServerID + "_d.dat", serverID + "_u.dat" )
+  var element = document.getElementById("div_" + serverID);
+  element.parentNode.removeChild(element);
+
+}
+
+//
+//
+//
+
+function setAuthByID(e){
+  acctType = e.split("_")[0]
+  authType = e.split("_")[1]
+  var execSwitch = document.getElementById('execTypeSwitchT')
+  var acctSwitch = document.getElementById('acctTypeSwitchT')
+  console.log(e)
+  console.log("Account login type is " + acctType + " and using " + authType + " based authentication")
+
+
+
+  if (acctType == "cpanel") {
+    execViaWHM = false
+    execViaAPI = false
+    execSwitch.checked = true
+    acctSwitch.checked = true
+    document.getElementById('acctTypeSwitchT').disabled = false
+
+  }
+  if ( authType == "api"){
+    execViaWHM = true
+    execViaAPI = true
+    execSwitch.checked = false
+    acctSwitch.checked = false
+    document.getElementById('acctTypeSwitchT').disabled = true
+    document.getElementById('loginBtn').disabled = true
+
+  }
+
+  if ( acctType == "whm" && authType == "pass" ) {
+    execViaWHM = true
+    execViaAPI = false
+    execSwitch.checked = true
+    acctSwitch.checked = false
+    document.getElementById('acctTypeSwitchT').disabled = false
+  }
+
+
+  sendNotification("Login type is " + acctType + " and auth type is " + authType )
+
+}
+
+//
+// This receives a file argument(s) and removes it, forcefully as possible
+//
+
+function clearUserFiles(filepath, held){
+  if (fs.existsSync(filepath)) {
+    fs.unlinkSync(filepath, (err) => {
+        if (err) {
+            alert("An error ocurred updating the file" + err.message);
+          //  console.log(err);
+            return;
+        }
+    //    console.log("File succesfully deleted");
+    });
+  } else {
+    console.log("Removed/partially removed partially defined server entry:"+filepath);
+    fs.rename(filepath, './cpdcontent/toberemoved' + held)
+    fs.unlinkSync('./cpdcontent/toberemoved' + held )
+  }
+}
+
+//
+// This populates our server entries onload
+//
+getUserFiles()
+document.getElementById('inputCommand').value = "listaccts?api.version=1";
+document.getElementById('inp_i').value = "User";
+document.getElementById('inp_a').value = "****";
+document.getElementById('inp_u').value = "https://Host.Or.IP:2087";
+document.getElementById('serverID').value = "SaveName";
+
+</script>
+<script src='./renderer.js'></script>
+
+</html>
