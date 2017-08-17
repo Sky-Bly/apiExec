@@ -7,5 +7,8 @@
 : Using this repository :
 
  git clone https://github.com/Sky-Bly/apiExec.git
+
  cd apiExec
+
  electron .
+
