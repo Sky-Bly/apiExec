@@ -9,13 +9,13 @@ var toBeRemoved = []
 
 
 //
-// Set a listiner for the input bar
+// Set a listener for the input bar
 //
 
 document.getElementById("inputCommand").addEventListener("keyup", KeyPress)
 
 //
-// Begin applicaiton functions
+// Begin application functions
 //
 
 function KeyPress(e) {
