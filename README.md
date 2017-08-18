@@ -1,7 +1,7 @@
 # Simple Electron app to interface with the WHM/cPanel APIs
 
 - Saves server information locally in an encrypted store for reuse
-- Use API Keys, Access Hashes, or User/Pass auth
+- Use API Tokens, Access Hashes, or User/Pass auth
 - Pass commands to the API
 
 : Using this repository :
